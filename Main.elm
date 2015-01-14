@@ -9,6 +9,9 @@ import Text
 import Math.Vector3 (Vec3, vec3, dot, cross, toRecord, length)
 import String
 
+import Graphics.Collage (..)
+import Color (..)
+
 
 main : Signal Element
 main = map3 doit (makeInput "W") (makeInput "L") (makeInput "H")
@@ -23,9 +26,9 @@ doit (w, wEl) (l, lEl) (h, hEl) =
         s = southRoof params
         e = eastRoof  params
         a = ridgeAngle n s
-    in  scene [wEl, lEl, hEl,
-               angleDisplay "Ridge angle" (ridgeAngle n s),
-               angleDisplay "Hip angle" (ridgeAngle n e)]
+        ridgeDiagrams =
+            ridgeDiagram "Ridge angle" (ridgeAngle n s) `beside`  ridgeDiagram "Hip angle" (ridgeAngle n e)
+    in  scene [wEl, lEl, hEl, ridgeDiagrams]
 
 scene : List Element -> Element
 scene elements = flow down elements
@@ -63,7 +66,34 @@ eastRoof : Params -> Vec3
 eastRoof p = vec3 p.h 0 p.l
 
 ridgeAngle : Vec3 -> Vec3 -> Float
-ridgeAngle r1 r2 = 180 - acos (dot r1 r2 / length r1 / length r2) * 180 / pi
+ridgeAngle r1 r2 = pi - acos (dot r1 r2 / length r1 / length r2)
 
---ridgeAngle : Int -> Int -> Element
---ridgeAngle content = asText <| content.string
+showAngle : Float -> Element
+showAngle angle = Text.plainText <| toString (round <| angle / degrees 1) ++ "°"
+
+pointAt : Float -> Float -> (Float, Float)
+pointAt radius theta =
+    let theta' = theta - pi / 2
+    in  (radius * negate (cos theta'), radius * sin theta')
+
+arc : Float -> Float -> Path
+arc radius angle =
+    let maxN = 20
+        thetaAtN n = angle * (n / maxN - 0.5)
+    in List.map (thetaAtN >> pointAt radius) [0 .. maxN]
+
+-- Drawing functions
+ridgeDiagram : String -> Float -> Element
+ridgeDiagram name angle = 
+    let nameLabel  = toForm <| Text.rightAligned <| Text.bold <| Text.fromString name
+        diagRoof   = path [pointAt 50 (-0.5 * angle), (0, 0), pointAt 50 (0.5 * angle)]
+        diagArc    = arc 30 angle
+        diagram    = collage 150 150 <| List.map (move (0, 40))
+            [ move (0, 20) nameLabel
+            , traced { defaultLine | width <- 10 } diagRoof
+            , traced { defaultLine | width <- 5  } diagArc
+            , move (3, -50) angleLabel]
+
+        angleLabel = toForm <| showAngle angle 
+    in  diagram
+        

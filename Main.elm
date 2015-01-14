@@ -14,10 +14,10 @@ import Color (..)
 
 
 main : Signal Element
-main = map3 doit (makeInput "W") (makeInput "L") (makeInput "H")
+main = map3 draw (makeInput "W") (makeInput "L") (makeInput "H")
 
-doit : (String, Element) -> (String, Element) -> (String, Element) -> Element
-doit (w, wEl) (l, lEl) (h, hEl) = 
+draw : (String, Element) -> (String, Element) -> (String, Element) -> Element
+draw (w, wEl) (l, lEl) (h, hEl) = 
     let params = Params (parse w) (parse l) (parse h)
         parse str = case (String.toFloat str) of
             Ok res  -> res
@@ -27,20 +27,13 @@ doit (w, wEl) (l, lEl) (h, hEl) =
         e = eastRoof  params
         a = ridgeAngle n s
         ridgeDiagrams =
-            ridgeDiagram "Ridge angle" (ridgeAngle n s) `beside`  ridgeDiagram "Hip angle" (ridgeAngle n e)
-    in  scene [wEl, lEl, hEl, ridgeDiagrams]
-
-scene : List Element -> Element
-scene elements = flow down elements
-
-angleDisplay : String -> Float -> Element
-angleDisplay name angle =
-    let s = toString angle
-     in asText angle
+            ridgeDiagram "Ridge angle" (ridgeAngle n s) `beside`
+            ridgeDiagram "Hip angle" (ridgeAngle n e)
+    in  flow down [wEl, lEl, hEl, ridgeDiagrams]
 
 makeInput : String -> Signal (String, Element)
 makeInput name =
-    let chan       = channel <| {noContent | string <- "10"}
+    let chan       = channel <| {noContent | string <- "20"}
         signal     = subscribe chan
         inputField = field defaultStyle (send chan) name
         wLabel el  = flow right [Text.leftAligned <| Text.fromString name, el]
@@ -53,9 +46,9 @@ type alias Params = {
     h : Float
 }
 
+-- Calculation functions
 -- There are north, east and south - facing roof sections
 -- The x-axis points east, y north and z up
-
 northRoof : Params -> Vec3
 northRoof p = vec3 0 p.h p.w
 
@@ -68,13 +61,13 @@ eastRoof p = vec3 p.h 0 p.l
 ridgeAngle : Vec3 -> Vec3 -> Float
 ridgeAngle r1 r2 = pi - acos (dot r1 r2 / length r1 / length r2)
 
+-- Drawing functions
 showAngle : Float -> Element
-showAngle angle = Text.plainText <| toString (round <| angle / degrees 1) ++ "°"
+showAngle angle = Text.plainText
+    <| toString (round <| angle / degrees 1) ++ "°"
 
 pointAt : Float -> Float -> (Float, Float)
-pointAt radius theta =
-    let theta' = theta - pi / 2
-    in  (radius * negate (cos theta'), radius * sin theta')
+pointAt radius theta = fromPolar (radius, theta - pi / 2)
 
 arc : Float -> Float -> Path
 arc radius angle =
@@ -82,18 +75,17 @@ arc radius angle =
         thetaAtN n = angle * (n / maxN - 0.5)
     in List.map (thetaAtN >> pointAt radius) [0 .. maxN]
 
--- Drawing functions
 ridgeDiagram : String -> Float -> Element
 ridgeDiagram name angle = 
-    let nameLabel  = toForm <| Text.rightAligned <| Text.bold <| Text.fromString name
-        diagRoof   = path [pointAt 50 (-0.5 * angle), (0, 0), pointAt 50 (0.5 * angle)]
+    let nameLabel  = toForm <| Text.rightAligned
+                            <| Text.bold
+                            <| Text.fromString name
+        angleLabel = toForm <| showAngle angle 
+        diagRoof   = path [pointAt 50 (-0.5 * angle)
+                          , (0, 0), pointAt 50 (0.5 * angle) ]
         diagArc    = arc 30 angle
-        diagram    = collage 150 150 <| List.map (move (0, 40))
+    in  collage 150 150 <| List.map (move (0, 40))
             [ move (0, 20) nameLabel
             , traced { defaultLine | width <- 10 } diagRoof
             , traced { defaultLine | width <- 5  } diagArc
             , move (3, -50) angleLabel]
-
-        angleLabel = toForm <| showAngle angle 
-    in  diagram
-        

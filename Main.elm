@@ -14,18 +14,20 @@ import Json.Encode
 -- Graphics
 import Graphics.Collage (..)
 import Color (..)
+import Window
 
 -- HTML form
 import Html
 import Html (..)
 import Html.Attributes (..)
 import Html.Events (..)
+import Basics
 
 main : Signal Html
-main = map3 draw (makeInput "W" "10") (makeInput "L" "10") (makeInput "H" "10")
+main = map4 draw (makeInput "W" "10") (makeInput "L" "10") (makeInput "H" "10") Window.dimensions
 
-draw : (String, Html) -> (String, Html) -> (String, Html) -> Html
-draw (w, wEl) (l, lEl) (h, hEl) = 
+draw : (String, Html) -> (String, Html) -> (String, Html) -> (Int, Int) -> Html
+draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight)= 
     let params = Params (parse w) (parse l) (parse h)
         parse str = case (String.toFloat str) of
             Ok res  -> res
@@ -34,9 +36,10 @@ draw (w, wEl) (l, lEl) (h, hEl) =
         s = southRoof params
         e = eastRoof  params
         a = ridgeAngle n s
-        ridgeDiagrams =
-            ridgeDiagram "Ridge angle" (ridgeAngle n s) `beside`
-            ridgeDiagram "Hip angle" (ridgeAngle n e)
+        ridgeDiagWidth = Basics.min winWidth 640
+        ridgeDiagrams = container winWidth (ridgeDiagWidth // 2) middle <|
+            ridgeDiagram ridgeDiagWidth "Ridge angle" (ridgeAngle n s) `beside`
+            ridgeDiagram ridgeDiagWidth "Hip angle" (ridgeAngle n e)
 
         bsFormGroup : String -> String -> Html -> Html
         bsFormGroup lbl myId formControl =
@@ -44,7 +47,7 @@ draw (w, wEl) (l, lEl) (h, hEl) =
                 label [class "control-label col-sm-2", for myId] [ text lbl ],
                 div [class "col-sm-10"] [ formControl ]
             ]
-    in div [class "container"] [
+    in div [class "jumbotron"] [
             Html.form [class "form-horizontal"] [
                 bsFormGroup "Side run:" "W" wEl,
                 bsFormGroup "End run:" "L" lEl,
@@ -101,8 +104,8 @@ arc radius angle =
         thetaAtN n = angle * (n / maxN - 0.5)
     in List.map (thetaAtN >> pointAt radius) [0 .. maxN]
 
-ridgeDiagram : String -> Float -> Element
-ridgeDiagram name angle = 
+ridgeDiagram : Int -> String -> Float -> Element
+ridgeDiagram width name angle = 
     let nameLabel  = toForm <| Text.rightAligned
                             <| Text.bold
                             <| Text.fromString name
@@ -110,8 +113,8 @@ ridgeDiagram name angle =
         diagRoof   = path [pointAt 50 (-0.5 * angle)
                           , (0, 0), pointAt 50 (0.5 * angle) ]
         diagArc    = arc 30 angle
-    in  collage 150 150 <| List.map (move (0, 40))
-            [ move (0, 20) nameLabel
+    in  collage (width // 2) (width // 2) <| List.map (scale (toFloat width / 300) << move (0, 40))
+            [ move (0, toFloat width / 12) nameLabel
             , traced { defaultLine | width <- 10 } diagRoof
             , traced { defaultLine | width <- 5  } diagArc
-            , move (3, -50) angleLabel]
+            , move (3, negate (toFloat width / 6)) angleLabel]

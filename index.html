@@ -21,7 +21,22 @@
     <![endif]-->
   </head>
   <body>
-    <h1>Roof Angle Calculator</h1>
+    <div class="navbar navbar-inverse nav-bar-static-top">
+      <div class="container">
+        <a href="#" class= "navbar-brand">Roof Angle Calculator</a>
+        <!--<ul class="nav navbar-nav navbar-right">-->
+          <!--<li><a href="">Follow</a></li>-->
+        <!--</ul>-->
+      </div>
+    </div>
+    <style>
+      .container-fluid {
+        margin-right: auto;
+        margin-left: auto;
+        max-width: 980px; /* or 950px */
+      }
+    </style>
+    <div class="container-fluid">
     <p>Enter the dimensions of your roof using any units, and the hip and ridge
        angles will be displayed below. </p>
      <div id="elm">
@@ -35,8 +50,9 @@
     <script src="elm.js"></script>
     <script type="text/javascript">
       var div = document.getElementById('elm');
-      // Elm.embed(Elm.RoofCalculator, div);
-      Elm.fullscreenDebug('RoofCalculator', 'Main.elm');
+      Elm.embed(Elm.RoofCalculator, div);
+      // Elm.fullscreenDebug('RoofCalculator', 'Main.elm');
     </script>
+    </div>
   </body>
 </html>

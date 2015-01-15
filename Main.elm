@@ -1,3 +1,4 @@
+module RoofCalculator where
 
 import Graphics.Element (..)
 import Graphics.Input.Field (..)
@@ -8,15 +9,22 @@ import Text (asText)
 import Text
 import Math.Vector3 (Vec3, vec3, dot, cross, toRecord, length)
 import String
+import Json.Encode
 
+-- Graphics
 import Graphics.Collage (..)
 import Color (..)
 
+-- HTML form
+import Html
+import Html (..)
+import Html.Attributes (..)
+import Html.Events (..)
 
-main : Signal Element
-main = map3 draw (makeInput "W") (makeInput "L") (makeInput "H")
+main : Signal Html
+main = map3 draw (makeInput "W" "10") (makeInput "L" "10") (makeInput "H" "10")
 
-draw : (String, Element) -> (String, Element) -> (String, Element) -> Element
+draw : (String, Html) -> (String, Html) -> (String, Html) -> Html
 draw (w, wEl) (l, lEl) (h, hEl) = 
     let params = Params (parse w) (parse l) (parse h)
         parse str = case (String.toFloat str) of
@@ -29,26 +37,44 @@ draw (w, wEl) (l, lEl) (h, hEl) =
         ridgeDiagrams =
             ridgeDiagram "Ridge angle" (ridgeAngle n s) `beside`
             ridgeDiagram "Hip angle" (ridgeAngle n e)
-    in  flow down [wEl, lEl, hEl, ridgeDiagrams]
 
-makeInput : String -> Signal (String, Element)
-makeInput name =
-    let chan       = channel <| {noContent | string <- "20"}
-        signal     = subscribe chan
-        inputField = field defaultStyle (send chan) name
-        wLabel el  = flow right [Text.leftAligned <| Text.fromString name, el]
-     in (\c -> (c.string, wLabel (inputField c))) <~ signal
+        bsFormGroup : String -> String -> Html -> Html
+        bsFormGroup lbl myId formControl =
+            div [class "form-group"] [
+                label [class "control-label col-sm-2", for myId] [ text lbl ],
+                div [class "col-sm-10"] [ formControl ]
+            ]
+    in div [class "container"] [
+            Html.form [class "form-horizontal"] [
+                bsFormGroup "Side run:" "W" wEl,
+                bsFormGroup "End run:" "L" lEl,
+                bsFormGroup "Rise:" "H" hEl
+            ],
+            fromElement ridgeDiagrams
+        ]
+
+makeInput : String -> String -> Signal (String, Html)
+makeInput myId defaultValue =
+    let updateChannel = channel defaultValue
+        valueToHtml v = 
+            input [type' "text"
+                  , class "form-control"
+                  , id myId
+                  , placeholder ""
+                  , value v
+                  , on "input" targetValue (send updateChannel)] []
+    in  (\v -> (v, valueToHtml v)) <~ subscribe updateChannel
 
 
+-- Calculation functions
+-- There are north, east and south - facing roof sections
+-- The x-axis points east, y north and z up
 type alias Params = {
     w : Float,
     l : Float,
     h : Float
 }
 
--- Calculation functions
--- There are north, east and south - facing roof sections
--- The x-axis points east, y north and z up
 northRoof : Params -> Vec3
 northRoof p = vec3 0 p.h p.w
 

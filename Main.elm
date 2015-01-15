@@ -1,7 +1,6 @@
 module RoofCalculator where
 
 import Graphics.Element (..)
-import Graphics.Input.Field (..)
 import Graphics.Input (..)
 import Signal (channel, Channel, Signal, map4, send, (<~), (~), subscribe)
 import List
@@ -24,6 +23,9 @@ import Html (..)
 import Html.Attributes (..)
 import Html.Events (..)
 import Basics
+
+-- The 3D view module
+import ThreeDView (..)
 
 -- Represents application state
 type alias Params = { w : Float
@@ -57,24 +59,27 @@ draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight)=
         s = southRoof params
         e = eastRoof  params
         a = ridgeAngle n s
-        ridgeDiagWidth = Basics.min winWidth 450
+        ridgeDiagWidth = 400
         ridgeDiagrams = container winWidth (ridgeDiagWidth // 2) middle <|
             ridgeDiagram ridgeDiagWidth "Ridge angle" (ridgeAngle n s) `beside`
             ridgeDiagram ridgeDiagWidth "Hip angle" (ridgeAngle n e)
-
-        bsFormGroup : String -> String -> Html -> Html
-        bsFormGroup lbl myId formControl =
-            div [class "form-group"] [
-                label [class "control-label col-sm-2", for myId] [ text lbl ],
-                div [class "col-sm-10"] [ formControl ]
-            ]
-    in div [class "jumbotron"] [
-            Html.form [class "form-horizontal"] [
+        forms = Html.form [class "form-horizontal col-xs-4"] [
                 bsFormGroup "Side run:" "W" wEl,
                 bsFormGroup "End run:" "L" lEl,
                 bsFormGroup "Rise:" "H" hEl
-            ],
-            fromElement ridgeDiagrams
+            ]
+        threeDView = div [class "col-xs-8 bordered"] [
+            fromElement <| make3DView (winWidth // 2, 150) params
+            ]
+        bsFormGroup : String -> String -> Html -> Html
+        bsFormGroup lbl myId formControl =
+            div [class "form-group row"] [
+                label [class "control-label col-xs-6", for myId] [ text lbl ],
+                div [class "col-xs-6"] [ formControl ]
+            ]
+    in div [class "jumbotron"]
+        [ div [class "row"] [forms , threeDView]
+        , div [class "row"] [fromElement ridgeDiagrams]
         ]
 
 makeInput : String -> String -> Signal (String, Html)
@@ -83,7 +88,6 @@ makeInput myId defaultValue =
         valueToHtml v = 
             input [type' "text"
                   , class "form-control"
-                  , style [("width", "80px")]
                   , id myId
                   , placeholder ""
                   , tabindex 0
@@ -141,7 +145,7 @@ ridgeDiagram width name angle =
 -- Integration with browser
 port initialLocation : String
 -- For debugging
-port initialLocation = "h=2"
+port initialLocation = "h=1&l=1&w=1"
 
 defaultValue = 10
 

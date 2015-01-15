@@ -49,9 +49,16 @@
     <script type="text/javascript" src="/_reactor/debug.js"></script>
     <script src="elm.js"></script>
     <script type="text/javascript">
+      function setLocation(newValue) {
+          console.log(newValue)
+          history.replaceState({}, "", "?" + newValue);
+      };
+
       var div = document.getElementById('elm');
-      Elm.embed(Elm.RoofCalculator, div);
-      // Elm.fullscreenDebug('RoofCalculator', 'Main.elm');
+      // var elmApp = Elm.embed(Elm.RoofCalculator, div, { initialLocation: window.location.search.substring(1) });
+      var elmApp = Elm.fullscreenDebug('RoofCalculator', 'Main.elm');
+      elmApp.ports.location.subscribe(setLocation);
+
     </script>
     </div>
   </body>

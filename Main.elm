@@ -11,6 +11,8 @@ import String
 import Dict
 import Dict (Dict)
 import Json.Encode
+import Http (Response(..))
+import WebGL
 
 -- Graphics
 import Graphics.Collage (..)
@@ -35,8 +37,10 @@ type alias Params = { w : Float
 
 main : Signal Html
 main = 
-    let doit (i1, i2, i3) dims = draw i1 i2 i3 dims
-    in  doit <~ inputs ~ Window.dimensions
+    let doit (i1, i2, i3) dims req req2 = draw i1 i2 i3 dims req req2
+    in  doit <~ inputs ~ Window.dimensions 
+              ~ WebGL.loadTexture "/roof-texture.jpg"
+              ~ WebGL.loadTexture "/wall-texture.jpg"
 
 inputs = (,,) <~ (makeInput "W" (toString initialParams.w))
                ~ (makeInput "L" (toString initialParams.l))
@@ -46,11 +50,13 @@ paramSignal =
     let parseValue v = case String.toFloat v of
             Err e -> defaultValue
             Ok  newV -> newV
-        getFirst ((wv,b), (lv,d), (hv,f)) = {w = parseValue wv, l = parseValue lv, h = parseValue hv }
+        getFirst ((wv,b), (lv,d), (hv,f)) =
+            {w = parseValue wv, l = parseValue lv, h = parseValue hv }
      in getFirst <~ inputs
 
-draw : (String, Html) -> (String, Html) -> (String, Html) -> (Int, Int) -> Html
-draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight)= 
+draw : (String, Html) -> (String, Html) -> (String, Html) -> (Int, Int) 
+       -> Response WebGL.Texture -> Response WebGL.Texture -> Html
+draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight) roofReq wallReq = 
     let params = Params (parse w) (parse l) (parse h)
         parse str = case (String.toFloat str) of
             Ok res  -> res
@@ -68,9 +74,12 @@ draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight)=
                 bsFormGroup "End run:" "L" lEl,
                 bsFormGroup "Rise:" "H" hEl
             ]
-        threeDView = div [class "col-xs-8 bordered"] [
-            fromElement <| make3DView (winWidth // 2, 150) params
-            ]
+        threeDView = case (roofReq, wallReq) of
+            (Success roof, Success wall) ->
+                div [class "col-xs-8 bordered"] [
+                    fromElement <| make3DView roof wall (winWidth // 2, 150) params
+                ]
+            _ -> div [] [text "Waiting for texture"]
         bsFormGroup : String -> String -> Html -> Html
         bsFormGroup lbl myId formControl =
             div [class "form-group row"] [

@@ -165,7 +165,7 @@ ridgeDiagram width name angle =
 -- Integration with browser
 port initialLocation : String
 -- For debugging
-port initialLocation = "h=2.2&l=3.55&w=3.95"
+-- port initialLocation = "h=2.2&l=3.55&w=3.95"
 
 defaultValue = 3.5
 

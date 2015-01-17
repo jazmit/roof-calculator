@@ -3,6 +3,7 @@ module RoofCalculator where
 import Graphics.Element (..)
 import Graphics.Input (..)
 import Signal (channel, Channel, Signal, map4, send, (<~), (~), subscribe)
+import Signal
 import List
 import Text (asText)
 import Text
@@ -12,6 +13,7 @@ import Dict
 import Dict (Dict)
 import Json.Encode
 import Http (Response(..))
+import HttpHelpers (..)
 import WebGL
 
 -- Graphics
@@ -36,15 +38,23 @@ type alias Params = { w : Float
                     }
 
 main : Signal Html
-main = 
-    let doit (i1, i2, i3) dims req req2 = draw i1 i2 i3 dims req req2
-    in  doit <~ inputs ~ Window.dimensions 
-              ~ WebGL.loadTexture "/roof-texture.jpg"
-              ~ WebGL.loadTexture "/wall-texture.jpg"
+main = draw <~ inputs ~ Window.dimensions ~ getTextures textures
 
 inputs = (,,) <~ (makeInput "W" (toString initialParams.w))
                ~ (makeInput "L" (toString initialParams.l))
                ~ (makeInput "H" (toString initialParams.h))
+
+
+textures = ["roof", "wall", "ruler", "rise", "end-run", "side-run"]
+
+getTextures : List String -> Signal (Response (String -> WebGL.Texture))
+getTextures names =
+    let requestSignals = List.map makeReqSignal names -- List (Signal (Response (String, WebGL.Texture)))
+        makeReqSignal name = "/" ++ name ++ "-texture.png" |> WebGL.loadTexture |> tagResponse name
+        getUnsafe list key = case Dict.get key (Dict.fromList list) of
+            Just value -> value
+    in  requestSignals |> combineSignals
+                       |> Signal.map (combineResponses >> mapResponse getUnsafe)
 
 paramSignal = 
     let parseValue v = case String.toFloat v of
@@ -54,9 +64,9 @@ paramSignal =
             {w = parseValue wv, l = parseValue lv, h = parseValue hv }
      in getFirst <~ inputs
 
-draw : (String, Html) -> (String, Html) -> (String, Html) -> (Int, Int) 
-       -> Response WebGL.Texture -> Response WebGL.Texture -> Html
-draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight) roofReq wallReq = 
+draw : ((String, Html), (String, Html), (String, Html)) -> (Int, Int) 
+       -> Response (String -> WebGL.Texture) -> Html
+draw ((w, wEl), (l, lEl), (h, hEl)) (winWidth, winHeight) textureRequests = 
     let params = Params (parse w) (parse l) (parse h)
         parse str = case (String.toFloat str) of
             Ok res  -> res
@@ -69,24 +79,26 @@ draw (w, wEl) (l, lEl) (h, hEl) (winWidth, winHeight) roofReq wallReq =
         ridgeDiagrams = container winWidth (ridgeDiagWidth // 2) middle <|
             ridgeDiagram ridgeDiagWidth "Ridge angle" (ridgeAngle n s) `beside`
             ridgeDiagram ridgeDiagWidth "Hip angle" (ridgeAngle n e)
-        forms = Html.form [class "form-horizontal col-xs-4"] [
-                bsFormGroup "Side run:" "W" wEl,
-                bsFormGroup "End run:" "L" lEl,
-                bsFormGroup "Rise:" "H" hEl
+        forms = Html.form [class "form-horizontal col-xs-6"] [
+                bsFormGroup "Side run (meters):" "W" wEl,
+                bsFormGroup "End run (meters):" "L" lEl,
+                bsFormGroup "Rise (meters):" "H" hEl
             ]
-        threeDView = case (roofReq, wallReq) of
-            (Success roof, Success wall) ->
-                div [class "col-xs-8 bordered"] [
-                    fromElement <| make3DView roof wall (winWidth // 2, 150) params
+        threeDView = case textureRequests of
+            Success textures ->
+                div [class "col-xs-6 bordered"] [
+                    fromElement <| make3DView textures (winWidth // 2, winWidth // 2) params
                 ]
-            _ -> div [] [text "Waiting for texture"]
+            Waiting ->
+                div [] [text "Waiting for texture"]
+            Failure errNo msg -> div [] [text "Failed to fetch textures"]
         bsFormGroup : String -> String -> Html -> Html
         bsFormGroup lbl myId formControl =
             div [class "form-group row"] [
-                label [class "control-label col-xs-6", for myId] [ text lbl ],
-                div [class "col-xs-6"] [ formControl ]
+                label [class "control-label col-sm-4", for myId] [ text lbl ],
+                div [class "col-sm-8"] [ formControl ]
             ]
-    in div [class "jumbotron"]
+    in div []
         [ div [class "row"] [forms , threeDView]
         , div [class "row"] [fromElement ridgeDiagrams]
         ]
@@ -150,13 +162,12 @@ ridgeDiagram width name angle =
             , traced { defaultLine | width <- 5  } diagArc
            , move (3, negate (toFloat width / 6)) angleLabel]
 
-
 -- Integration with browser
 port initialLocation : String
 -- For debugging
-port initialLocation = "h=1&l=1&w=1"
+port initialLocation = "h=2.2&l=3.55&w=3.95"
 
-defaultValue = 10
+defaultValue = 3.5
 
 parseParams : String -> Params
 parseParams search =

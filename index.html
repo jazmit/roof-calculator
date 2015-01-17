@@ -34,7 +34,7 @@
         border: dashed gray 1px;
       }
     </style>
-    <div class="container">
+    <div class="container-fluid" style="max-width: 640px; margin: auto;">
     <p>Enter the dimensions of your roof using any units, and the hip and ridge
        angles will be displayed below. </p>
      <div id="elm">
@@ -54,7 +54,8 @@
 
       var div = document.getElementById('elm');
       // var elmApp = Elm.embed(Elm.RoofCalculator, div, { initialLocation: window.location.search.substring(1) });
-      var elmApp = Elm.fullscreenDebug('RoofCalculator', 'Main.elm');
+      var elmApp = Elm.embed(Elm.RoofCalculator, div);
+      // var elmApp = Elm.fullscreenDebug('RoofCalculator', 'Main.elm');
       elmApp.ports.location.subscribe(setLocation);
 
     </script>

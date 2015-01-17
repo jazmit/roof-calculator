@@ -50,7 +50,7 @@ textures = ["roof", "wall", "ruler", "rise", "end-run", "side-run"]
 getTextures : List String -> Signal (Response (String -> WebGL.Texture))
 getTextures names =
     let requestSignals = List.map makeReqSignal names -- List (Signal (Response (String, WebGL.Texture)))
-        makeReqSignal name = "/" ++ name ++ "-texture.png" |> WebGL.loadTexture |> tagResponse name
+        makeReqSignal name = name ++ "-texture.png" |> WebGL.loadTexture |> tagResponse name
         getUnsafe list key = case Dict.get key (Dict.fromList list) of
             Just value -> value
     in  requestSignals |> combineSignals

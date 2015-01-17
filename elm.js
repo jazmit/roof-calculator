@@ -14522,10 +14522,8 @@ Elm.RoofCalculator.make = function (_elm) {
          });
          var makeReqSignal = function (name) {
             return $HttpHelpers.tagResponse(name)($WebGL.loadTexture(A2($Basics._op["++"],
-            "/",
-            A2($Basics._op["++"],
             name,
-            "-texture.png"))));
+            "-texture.png")));
          };
          var requestSignals = A2($List.map,
          makeReqSignal,
